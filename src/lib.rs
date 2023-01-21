@@ -14,6 +14,76 @@ fn log_request(req: &Request) {
     );
 }
 
+fn get_weather_info(req: &Request) -> String {
+    let html_style = "body{padding:6em; font-family: sans-serif;} h1{color:#f6821f;}";
+
+    let mut html_content = format!("<p> Colo: {} </p>", req.cf().colo());
+    html_content = format!(
+        "{}<p> Country: {} </p>",
+        html_content,
+        req.cf().country().unwrap_or("unknown country".into())
+    );
+    html_content = format!(
+        "{}<p> City: {} </p>",
+        html_content,
+        req.cf().city().unwrap_or("unknown city".into())
+    );
+    html_content = format!(
+        "{}<p> Continent: {} </p>",
+        html_content,
+        req.cf().continent().unwrap_or("unknown continent".into())
+    );
+    html_content = format!(
+        "{}<p> Latitude: {} </p>",
+        html_content,
+        req.cf().coordinates().unwrap_or((0f32, 0f32)).0
+    );
+    html_content = format!(
+        "{}<p> Longitude: {} </p>",
+        html_content,
+        req.cf().coordinates().unwrap_or((0f32, 0f32)).1
+    );
+    html_content = format!(
+        "{}<p> PostalCode: {} </p>",
+        html_content,
+        req.cf()
+            .postal_code()
+            .unwrap_or("unknown postalCode".into())
+    );
+    html_content = format!(
+        "{}<p> MetroCode: {} </p>",
+        html_content,
+        req.cf().metro_code().unwrap_or("unknown metroCode".into())
+    );
+    html_content = format!(
+        "{}<p> Region: {} </p>",
+        html_content,
+        req.cf().region().unwrap_or("unknown region".into())
+    );
+    html_content = format!(
+        "{}<p> RegionCode: {} </p>",
+        html_content,
+        req.cf()
+            .region_code()
+            .unwrap_or("unknown regionCode".into())
+    );
+
+    format!(
+        "<!DOCTYPE html>
+        <head>
+        <title> Geolocation: Hello World </title>
+        <style> ${html_style} </style>
+        </head>
+        <body>
+        <h1>Geolocation: Hello World!</h1>
+        <p>You now have access to geolocation data about where your user is visiting from.</p>
+        {}
+    </body>",
+        html_content
+    )
+}
+
+#[warn(dead_code)]
 fn parse() -> String {
     let markdown_input: &str = "Hello world, this is a ~~complicated~~ *very simple* example.";
     println!("Parsing the following Markdown string:\n{}", markdown_input);
@@ -48,11 +118,12 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
     // provide arbitrary data that will be accessible in each route via the `ctx.data()` method.
     let router = Router::new();
 
+    let _ = get_weather_info(&req);
     // Add as many routes as your Worker needs! Each route will get a `Request` for handling HTTP
     // functionality and a `RouteContext` which you can use to  and get route parameters and
     // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     let res = router
-        .get("/", |_, _| Response::ok(parse()))
+        .get("/", |req, _| Response::ok(get_weather_info(&req)))
         .post_async("/form/:field", |mut req, ctx| async move {
             if let Some(name) = ctx.param("field") {
                 let form = req.form_data().await?;
@@ -77,7 +148,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .await?;
 
     let mut headers = Headers::new();
-    let _ = headers.set("Content-type", "text/html");
+    let _ = headers.set("Content-type", "text/html;charset=UTF-8");
     let r = res.with_headers(headers);
     Ok(r)
 }
